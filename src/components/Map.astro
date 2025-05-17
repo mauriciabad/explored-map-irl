@@ -31,6 +31,28 @@ const { class: className, ...props } = Astro.props
     const drawnItems = new L.FeatureGroup()
     map.addLayer(drawnItems)
 
+    // Load saved shapes from localStorage
+    const savedShapes = localStorage.getItem('mapShapes')
+    if (savedShapes) {
+      try {
+        const shapes = JSON.parse(savedShapes)
+        L.geoJSON(shapes, {
+          style: (feature) => {
+            if (!feature?.properties?.color) return {}
+            return {
+              color: feature.properties.color,
+              fillColor: feature.properties.color,
+              fillOpacity: 0.3,
+            }
+          },
+        }).eachLayer((layer) => {
+          drawnItems.addLayer(layer)
+        })
+      } catch (e) {
+        console.error('Error loading saved shapes:', e)
+      }
+    }
+
     // Color options
     const colors = ['#ea4336', '#1a74e8', '#34a854', '#5dd6fb', '#fcbc05', '#ff00ff']
     let currentColor = colors[0]
@@ -48,8 +70,6 @@ const { class: className, ...props } = Astro.props
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control')
         container.style.backgroundColor = 'white'
         container.style.padding = '5px'
-
-        const label = L.DomUtil.create('div', '', container)
 
         colors.forEach((color) => {
           const colorBtn = L.DomUtil.create('div', 'color-btn', container)
@@ -85,6 +105,47 @@ const { class: className, ...props } = Astro.props
 
     map.addControl(new colorControl())
 
+    // Create download control
+    const downloadControl = L.Control.extend({
+      options: {
+        position: 'topleft',
+      },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control')
+        container.style.backgroundColor = 'white'
+        container.style.padding = '5px'
+
+        const downloadBtn = L.DomUtil.create('div', 'leaflet-draw-toolbar-button', container)
+        downloadBtn.style.width = '20px'
+        downloadBtn.style.height = '20px'
+        downloadBtn.style.cursor = 'pointer'
+        downloadBtn.style.display = 'flex'
+        downloadBtn.style.alignItems = 'center'
+        downloadBtn.style.justifyContent = 'center'
+        downloadBtn.style.borderRadius = '4px'
+
+        const icon = L.DomUtil.create('div', '', downloadBtn)
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>`
+
+        L.DomEvent.on(downloadBtn, 'click', function () {
+          const geoJson = drawnItems.toGeoJSON()
+          const blob = new Blob([JSON.stringify(geoJson, null, 2)], { type: 'application/json' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = 'map-shapes.geojson'
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        })
+
+        return container
+      },
+    })
+
+    map.addControl(new downloadControl())
+
     // Helper function to create draw control with current color
     function createDrawControl() {
       return new L.Control.Draw({
@@ -115,10 +176,43 @@ const { class: className, ...props } = Astro.props
       })
     }
 
+    // Save shapes to localStorage whenever they change
+    function saveShapes() {
+      const geoJson = drawnItems.toGeoJSON() as GeoJSON.FeatureCollection
+      // Add color information to each feature's properties
+      geoJson.features.forEach((feature: GeoJSON.Feature) => {
+        if (!feature.properties) {
+          feature.properties = {}
+        }
+        const layer = drawnItems.getLayers().find((l) => {
+          const layerGeoJson = (l as L.Path & { toGeoJSON(): GeoJSON.Feature }).toGeoJSON()
+          const layerCoords = JSON.stringify((layerGeoJson.geometry as GeoJSON.Polygon).coordinates)
+          const featureCoords = JSON.stringify((feature.geometry as GeoJSON.Polygon).coordinates)
+          return layerCoords === featureCoords
+        })
+        if (layer) {
+          const style = (layer as L.Path).options
+          feature.properties.color = style.color
+        }
+      })
+      localStorage.setItem('mapShapes', JSON.stringify(geoJson))
+    }
+
     // Handle created objects
     map.on('draw:created', function (e) {
       const layer = e.layer
       drawnItems.addLayer(layer)
+      saveShapes()
+    })
+
+    // Handle edited objects
+    map.on('draw:edited', function () {
+      saveShapes()
+    })
+
+    // Handle deleted objects
+    map.on('draw:deleted', function () {
+      saveShapes()
     })
 
     // Fix map size issues if any
