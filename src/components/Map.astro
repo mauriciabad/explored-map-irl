@@ -31,36 +31,13 @@ const { class: className, ...props } = Astro.props
     const drawnItems = new L.FeatureGroup()
     map.addLayer(drawnItems)
 
-    // Initialize draw control
-    const drawControl = new L.Control.Draw({
-      draw: {
-        polyline: false,
-        polygon: {
-          allowIntersection: true,
-          showArea: true,
-          drawError: {
-            color: '#e1e100',
-            message: "<strong>Oh snap!<strong> you can't draw that!",
-          },
-          shapeOptions: {
-            color: '#f00',
-          },
-        },
-        rectangle: false,
-        circle: false,
-        marker: false,
-        circlemarker: false,
-      },
-      edit: {
-        featureGroup: drawnItems,
-        remove: true,
-      },
-    })
-    map.addControl(drawControl)
-
     // Color options
     const colors = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ff00ff']
     let currentColor = colors[0]
+
+    // Initialize draw control with default options
+    const drawControl = createDrawControl()
+    map.addControl(drawControl)
 
     // Create custom color control
     const colorControl = L.Control.extend({
@@ -91,6 +68,13 @@ const { class: className, ...props } = Astro.props
               ;(el as HTMLElement).style.border = '1px solid #ccc'
             })
             colorBtn.style.border = '2px solid black'
+
+            // Remove the old draw control
+            map.removeControl(drawControl)
+
+            // Create a new draw control with updated color
+            const newDrawControl = createDrawControl()
+            map.addControl(newDrawControl)
           })
         })
 
@@ -100,19 +84,39 @@ const { class: className, ...props } = Astro.props
 
     map.addControl(new colorControl())
 
+    // Helper function to create draw control with current color
+    function createDrawControl() {
+      return new L.Control.Draw({
+        draw: {
+          polyline: false,
+          polygon: {
+            allowIntersection: true,
+            showArea: true,
+            drawError: {
+              color: '#e1e100',
+              message: "<strong>Oh snap!<strong> you can't draw that!",
+            },
+            shapeOptions: {
+              color: currentColor,
+              fillColor: currentColor,
+              fillOpacity: 0.3,
+            },
+          },
+          rectangle: false,
+          circle: false,
+          marker: false,
+          circlemarker: false,
+        },
+        edit: {
+          featureGroup: drawnItems,
+          remove: true,
+        },
+      })
+    }
+
     // Handle created objects
     map.on('draw:created', function (e) {
       const layer = e.layer
-
-      // Set color based on selection
-      if (layer.setStyle) {
-        layer.setStyle({
-          color: currentColor,
-          fillColor: currentColor,
-          fillOpacity: 0.3,
-        })
-      }
-
       drawnItems.addLayer(layer)
     })
 
