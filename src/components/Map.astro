@@ -4,6 +4,7 @@ import { cn } from '../utils/cn'
 import type { HTMLAttributes } from 'astro/types'
 
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-draw/dist/leaflet.draw.css'
 
 type Props = HTMLAttributes<'div'>
 
@@ -14,6 +15,7 @@ const { class: className, ...props } = Astro.props
 
 <script>
   import L from 'leaflet'
+  import 'leaflet-draw'
 
   document.addEventListener('astro:page-load', () => {
     // Initialize map
