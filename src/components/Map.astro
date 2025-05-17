@@ -27,6 +27,95 @@ const { class: className, ...props } = Astro.props
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map)
 
+    // FeatureGroup to store editable layers
+    const drawnItems = new L.FeatureGroup()
+    map.addLayer(drawnItems)
+
+    // Initialize draw control
+    const drawControl = new L.Control.Draw({
+      draw: {
+        polyline: false,
+        polygon: {
+          allowIntersection: true,
+          showArea: true,
+          drawError: {
+            color: '#e1e100',
+            message: "<strong>Oh snap!<strong> you can't draw that!",
+          },
+          shapeOptions: {
+            color: '#f00',
+          },
+        },
+        rectangle: false,
+        circle: false,
+        marker: false,
+        circlemarker: false,
+      },
+      edit: {
+        featureGroup: drawnItems,
+        remove: true,
+      },
+    })
+    map.addControl(drawControl)
+
+    // Color options
+    const colors = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ff00ff']
+    let currentColor = colors[0]
+
+    // Create custom color control
+    const colorControl = L.Control.extend({
+      options: {
+        position: 'topright',
+      },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control')
+        container.style.backgroundColor = 'white'
+        container.style.padding = '5px'
+
+        const label = L.DomUtil.create('div', '', container)
+        label.innerHTML = 'Color:'
+        label.style.marginBottom = '4px'
+
+        colors.forEach((color) => {
+          const colorBtn = L.DomUtil.create('div', 'color-btn', container)
+          colorBtn.style.width = '20px'
+          colorBtn.style.height = '20px'
+          colorBtn.style.backgroundColor = color
+          colorBtn.style.cursor = 'pointer'
+          colorBtn.style.marginBottom = '3px'
+          colorBtn.style.border = color === currentColor ? '2px solid black' : '1px solid #ccc'
+
+          L.DomEvent.on(colorBtn, 'click', function () {
+            currentColor = color
+            document.querySelectorAll('.color-btn').forEach((el) => {
+              ;(el as HTMLElement).style.border = '1px solid #ccc'
+            })
+            colorBtn.style.border = '2px solid black'
+          })
+        })
+
+        return container
+      },
+    })
+
+    map.addControl(new colorControl())
+
+    // Handle created objects
+    map.on('draw:created', function (e) {
+      const layer = e.layer
+
+      // Set color based on selection
+      if (layer.setStyle) {
+        layer.setStyle({
+          color: currentColor,
+          fillColor: currentColor,
+          fillOpacity: 0.3,
+        })
+      }
+
+      drawnItems.addLayer(layer)
+    })
+
     // Fix map size issues if any
     setTimeout(() => {
       map.invalidateSize()
