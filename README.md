@@ -2,6 +2,8 @@
 
 Mark the areas you explored in a map in real life (IRL)
 
+Use it here: <https://explored.mauri.app>
+
 ## Contributing
 
 ### Commands
