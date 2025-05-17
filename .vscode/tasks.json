@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "install",
+      "type": "shell",
+      "command": "npm i"
+    },
+    {
+      "label": "develop",
+      "type": "shell",
+      "command": "npm run dev",
+      "icon": {
+        "id": "browser",
+        "color": "terminal.ansiBlue"
+      },
+      "isBackground": true
+    },
+    {
+      "label": "Install and run",
+      "dependsOrder": "sequence",
+      "dependsOn": ["install", "develop"],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    }
+  ]
+}
