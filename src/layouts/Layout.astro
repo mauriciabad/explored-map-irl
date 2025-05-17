@@ -1,17 +1,15 @@
 ---
 import { ClientRouter } from 'astro:transitions'
-
-import type { HTMLAttributes } from 'astro/types'
+import { pwaInfo } from 'virtual:pwa-info'
 
 import '../global.css'
 
 type Props = {
   title?: string
   description?: string
-  bodyProps?: HTMLAttributes<'body'>
 }
 
-const { title = 'Explored Map IRL', description, bodyProps } = Astro.props
+const { title = 'Explored Map IRL', description } = Astro.props
 ---
 
 <!doctype html>
@@ -19,11 +17,6 @@ const { title = 'Explored Map IRL', description, bodyProps } = Astro.props
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>"
-    />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     {!!description && <meta name="description" content={description} />}
@@ -34,10 +27,21 @@ const { title = 'Explored Map IRL', description, bodyProps } = Astro.props
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     {!!description && <meta name="twitter:description" content={description} />}
+    <meta name="theme-color" content="#000000" />
+    <script src="/src/pwa.ts"></script>
+    {pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
+
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon/favicon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <ClientRouter />
   </head>
-  <body {...bodyProps}>
+  <body>
     <slot />
   </body>
 </html>

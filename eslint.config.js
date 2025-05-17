@@ -117,7 +117,7 @@ export default tseslint.config(
           },
         },
       ],
-      'import/no-unresolved': ['error', { ignore: ['^astro:'] }],
+      'import/no-unresolved': ['error', { ignore: ['^astro:', '^virtual:'] }],
       'import/newline-after-import': 'error',
       'import/first': 'error',
       'import/namespace': 'off',
