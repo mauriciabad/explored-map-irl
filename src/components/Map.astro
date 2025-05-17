@@ -57,9 +57,113 @@ const { class: className, ...props } = Astro.props
     const colors = ['#ea4336', '#1a74e8', '#34a854', '#5dd6fb', '#fcbc05', '#ff00ff']
     let currentColor = colors[0]
 
-    // Initialize draw control with default options
-    const drawControl = createDrawControl()
-    map.addControl(drawControl)
+    // Create file operations toolbar
+    const fileToolbar = L.Control.extend({
+      options: {
+        position: 'topleft',
+      },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control')
+        container.style.backgroundColor = 'white'
+        container.style.padding = '0'
+        container.style.display = 'inline-block'
+
+        // Upload button
+        const uploadBtn = L.DomUtil.create('a', 'leaflet-draw-toolbar-button', container)
+        uploadBtn.style.width = '30px'
+        uploadBtn.style.height = '30px'
+        uploadBtn.style.display = 'flex'
+        uploadBtn.style.alignItems = 'center'
+        uploadBtn.style.justifyContent = 'center'
+        uploadBtn.style.borderRadius = '0'
+        uploadBtn.style.cursor = 'pointer'
+        uploadBtn.style.background = 'none'
+        uploadBtn.style.border = 'none'
+        uploadBtn.style.boxShadow = 'none'
+        uploadBtn.title = 'Upload GeoJSON'
+
+        const uploadIcon = L.DomUtil.create('div', '', uploadBtn)
+        uploadIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M440-200h80v-167l64 64 56-57-160-160-160 160 57 56 63-63v167ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></svg>`
+
+        // Download button
+        const downloadBtn = L.DomUtil.create('a', 'leaflet-draw-toolbar-button', container)
+        downloadBtn.style.width = '30px'
+        downloadBtn.style.height = '30px'
+        downloadBtn.style.display = 'flex'
+        downloadBtn.style.alignItems = 'center'
+        downloadBtn.style.justifyContent = 'center'
+        downloadBtn.style.borderRadius = '0'
+        downloadBtn.style.cursor = 'pointer'
+        downloadBtn.style.background = 'none'
+        downloadBtn.style.border = 'none'
+        downloadBtn.style.boxShadow = 'none'
+        downloadBtn.title = 'Download GeoJSON'
+        downloadBtn.style.borderTop = '1px solid #ccc'
+
+        const downloadIcon = L.DomUtil.create('div', '', downloadBtn)
+        downloadIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>`
+
+        // Hidden file input
+        const fileInput = L.DomUtil.create('input', '', container)
+        fileInput.type = 'file'
+        fileInput.accept = '.geojson,application/json'
+        fileInput.style.display = 'none'
+
+        L.DomEvent.on(uploadBtn, 'click', function () {
+          fileInput.click()
+        })
+
+        L.DomEvent.on(fileInput, 'change', function (e) {
+          const file = (e.target as HTMLInputElement).files?.[0]
+          if (!file) return
+
+          const reader = new FileReader()
+          reader.onload = function (e) {
+            try {
+              const geoJson = JSON.parse(e.target?.result as string)
+              // Clear existing shapes
+              drawnItems.eachLayer((layer) => {
+                drawnItems.removeLayer(layer)
+              })
+              // Add new shapes
+              L.geoJSON(geoJson, {
+                style: (feature) => {
+                  if (!feature?.properties?.color) return {}
+                  return {
+                    color: feature.properties.color,
+                    fillColor: feature.properties.color,
+                    fillOpacity: 0.3,
+                  }
+                },
+              }).eachLayer((layer) => {
+                drawnItems.addLayer(layer)
+              })
+              // Save to localStorage
+              saveShapes()
+            } catch (error) {
+              console.error('Error loading GeoJSON:', error)
+              alert("Error loading GeoJSON file. Please make sure it's a valid GeoJSON file.")
+            }
+          }
+          reader.readAsText(file)
+        })
+
+        L.DomEvent.on(downloadBtn, 'click', function () {
+          const geoJson = drawnItems.toGeoJSON()
+          const blob = new Blob([JSON.stringify(geoJson, null, 2)], { type: 'application/json' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = 'map-shapes.geojson'
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        })
+
+        return container
+      },
+    })
 
     // Create custom color control
     const colorControl = L.Control.extend({
@@ -90,12 +194,10 @@ const { class: className, ...props } = Astro.props
             })
             colorBtn.style.border = selectedBorderStyle
 
-            // Remove the old draw control
-            map.removeControl(drawControl)
-
-            // Create a new draw control with updated color
-            const newDrawControl = createDrawControl()
-            map.addControl(newDrawControl)
+            // Remove and re-add only the draw control
+            map.removeControl(currentDrawControl)
+            currentDrawControl = createDrawControl()
+            map.addControl(currentDrawControl)
           })
         })
 
@@ -103,48 +205,15 @@ const { class: className, ...props } = Astro.props
       },
     })
 
-    map.addControl(new colorControl())
+    // Add file toolbar and color control once
+    const fileToolbarInstance = new fileToolbar()
+    const colorControlInstance = new colorControl()
+    map.addControl(fileToolbarInstance)
+    map.addControl(colorControlInstance)
 
-    // Create download control
-    const downloadControl = L.Control.extend({
-      options: {
-        position: 'topleft',
-      },
-      onAdd: function () {
-        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control')
-        container.style.backgroundColor = 'white'
-        container.style.padding = '5px'
-
-        const downloadBtn = L.DomUtil.create('div', 'leaflet-draw-toolbar-button', container)
-        downloadBtn.style.width = '20px'
-        downloadBtn.style.height = '20px'
-        downloadBtn.style.cursor = 'pointer'
-        downloadBtn.style.display = 'flex'
-        downloadBtn.style.alignItems = 'center'
-        downloadBtn.style.justifyContent = 'center'
-        downloadBtn.style.borderRadius = '4px'
-
-        const icon = L.DomUtil.create('div', '', downloadBtn)
-        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>`
-
-        L.DomEvent.on(downloadBtn, 'click', function () {
-          const geoJson = drawnItems.toGeoJSON()
-          const blob = new Blob([JSON.stringify(geoJson, null, 2)], { type: 'application/json' })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'map-shapes.geojson'
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        })
-
-        return container
-      },
-    })
-
-    map.addControl(new downloadControl())
+    // Keep reference to the current draw control
+    let currentDrawControl = createDrawControl()
+    map.addControl(currentDrawControl)
 
     // Helper function to create draw control with current color
     function createDrawControl() {
