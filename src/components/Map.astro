@@ -18,8 +18,35 @@ const { class: className, ...props } = Astro.props
   import 'leaflet-draw'
 
   document.addEventListener('astro:page-load', () => {
+    // Load last map position and zoom from localStorage
+    const savedMapState = localStorage.getItem('mapState')
+    let initialCenter: [number, number] = [34.778306, 32.418944]
+    let initialZoom = 13
+    if (savedMapState) {
+      try {
+        const { center, zoom } = JSON.parse(savedMapState)
+        if (
+          Array.isArray(center) &&
+          center.length === 2 &&
+          typeof center[0] === 'number' &&
+          typeof center[1] === 'number' &&
+          typeof zoom === 'number'
+        ) {
+          initialCenter = [center[0], center[1]]
+          initialZoom = zoom
+        }
+      } catch {}
+    }
+
     // Initialize map
-    const map = L.map('map', { attributionControl: false }).setView([34.778306, 32.418944], 13)
+    const map = L.map('map', { attributionControl: false }).setView(initialCenter, initialZoom)
+
+    // Save map position and zoom on moveend
+    map.on('moveend', function () {
+      const center = map.getCenter()
+      const zoom = map.getZoom()
+      localStorage.setItem('mapState', JSON.stringify({ center: [center.lat, center.lng], zoom }))
+    })
 
     // Add tile layer
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
