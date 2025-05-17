@@ -32,7 +32,7 @@ const { class: className, ...props } = Astro.props
     map.addLayer(drawnItems)
 
     // Color options
-    const colors = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ff00ff']
+    const colors = ['#ea4336', '#1a74e8', '#34a854', '#5dd6fb', '#fcbc05', '#ff00ff']
     let currentColor = colors[0]
 
     // Initialize draw control with default options
@@ -50,8 +50,6 @@ const { class: className, ...props } = Astro.props
         container.style.padding = '5px'
 
         const label = L.DomUtil.create('div', '', container)
-        label.innerHTML = 'Color:'
-        label.style.marginBottom = '4px'
 
         colors.forEach((color) => {
           const colorBtn = L.DomUtil.create('div', 'color-btn', container)
@@ -60,14 +58,17 @@ const { class: className, ...props } = Astro.props
           colorBtn.style.backgroundColor = color
           colorBtn.style.cursor = 'pointer'
           colorBtn.style.marginBottom = '3px'
-          colorBtn.style.border = color === currentColor ? '2px solid black' : '1px solid #ccc'
+          colorBtn.style.borderRadius = '5px'
+          const selectedBorderStyle = '2px solid black'
+          const notSelectedBorderStyle = 'none'
+          colorBtn.style.border = color === currentColor ? selectedBorderStyle : notSelectedBorderStyle
 
           L.DomEvent.on(colorBtn, 'click', function () {
             currentColor = color
-            document.querySelectorAll('.color-btn').forEach((el) => {
-              ;(el as HTMLElement).style.border = '1px solid #ccc'
+            document.querySelectorAll<HTMLDivElement>('.color-btn').forEach((el) => {
+              el.style.border = notSelectedBorderStyle
             })
-            colorBtn.style.border = '2px solid black'
+            colorBtn.style.border = selectedBorderStyle
 
             // Remove the old draw control
             map.removeControl(drawControl)
