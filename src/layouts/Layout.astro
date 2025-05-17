@@ -1,15 +1,17 @@
 ---
-import type { HTMLAttributes } from 'astro/types';
-import '../global.css';
-import { ClientRouter } from 'astro:transitions';
+import { ClientRouter } from 'astro:transitions'
 
-interface Props {
-  title?: string;
-  description?: string;
-  bodyProps?: HTMLAttributes<'body'>;
+import type { HTMLAttributes } from 'astro/types'
+
+import '../global.css'
+
+type Props = {
+  title?: string
+  description?: string
+  bodyProps?: HTMLAttributes<'body'>
 }
 
-const { title = 'Explored Map IRL', description, bodyProps } = Astro.props;
+const { title = 'Explored Map IRL', description, bodyProps } = Astro.props
 ---
 
 <!doctype html>
